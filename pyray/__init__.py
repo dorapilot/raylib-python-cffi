@@ -155,5 +155,16 @@ for struct in ffi.list_types()[0]:
 from raylib.enums import *
 
 
+if len(ffi.typeof(rl.DrawCircleGradient).args) == 5:
+    _draw_circle_gradient = draw_circle_gradient
+
+    def draw_circle_gradient(*args):
+        # Accept Vector2 centers on native versions that take integer coordinates.
+        if len(args) == 4:
+            center, radius, inner, outer = args
+            return _draw_circle_gradient(int(center.x), int(center.y), radius, inner, outer)
+        return _draw_circle_gradient(*args)
+
+
 def text_format(*args):
     raise RuntimeError("Use Python f-strings etc rather than calling text_format().")
