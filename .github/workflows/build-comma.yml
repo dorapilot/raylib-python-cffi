@@ -1,0 +1,60 @@
+name: Build COMMA aarch64
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-comma-aarch64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdrm-dev libgbm-dev libegl-dev libgles2-mesa-dev
+
+      - name: Build raylib for COMMA platform
+        run: |
+          cd raylib-c/src
+          make -j$(nproc) PLATFORM=PLATFORM_COMMA
+          sudo make install PLATFORM=PLATFORM_COMMA
+        env:
+          RAYLIB_LIBTYPE: STATIC
+
+      - name: Copy headers
+        run: |
+          sudo cp raygui/src/raygui.h /usr/local/include/
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build wheel
+        run: |
+          pip install cffi wheel setuptools
+          RAYLIB_PLATFORM=PLATFORM_COMMA \
+          RAYLIB_INCLUDE_PATH=/usr/local/include \
+          RAYLIB_LIB_PATH=/usr/local/lib \
+          python setup.py bdist_wheel
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: raylib-comma-aarch64
+          path: dist/*.whl
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/liberation-day-7.2'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}-${{ github.sha }}
+          target_commitish: ${{ github.sha }}
+          files: dist/*.whl
+          generate_release_notes: true
